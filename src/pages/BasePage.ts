@@ -18,10 +18,11 @@ import { createLogger, type Logger } from '@utils/logger';
 export abstract class BasePage{
     protected readonly page: Page;
     protected readonly el: UtilElementLocator;
-    protected readonly log: Logger;
+    protected readonly log: Logger; //property named log that will hold a Logger object
 
        protected constructor(page: Page, scope: string) {
         this.page = page;
+         //creating an object of the UtilElementLocator class and assigning it to this.el.
         this.el = new UtilElementLocator(page, scope);
         this.log = createLogger(scope);
     }
@@ -31,3 +32,4 @@ export abstract class BasePage{
         await this.page.waitForLoadState('domcontentloaded');
     }
 }
+//BasePage — a common parent class for your page classes.

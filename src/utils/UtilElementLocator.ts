@@ -1,5 +1,8 @@
 // Whatever the common utilities are there, 
 // it will be present in the util element locator. 
+//target is the element you want to double-click.
+//Flex is a custom type defined in your framework that specifies what kind of target
+// the utility accepts.
 
 /**
  * This is UtilElementLocators - Contains all the util we can reuse direclty
@@ -40,7 +43,10 @@ export class UtilElementLocator {
     private describe(target: Flex): string {
         return typeof target === 'string' ? target : target.toString();
     }
-
+/*
+This utility clicks a given element using Playwright, converts the target into a locator,
+logs the action, and applies a timeout.
+*/
     async click(target: Flex, timeout: number = DEFAULT_ACTION_TIMEOUT_MS): Promise<void> {
         const loc = this.toLocator(target); // Checking if it is a normal locator or a Playwright locator.
         this.log.debug(`clicking ${this.describe(target)}`);
@@ -186,4 +192,3 @@ export class UtilElementLocator {
 
 
 }
-

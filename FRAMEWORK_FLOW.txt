@@ -1,0 +1,218 @@
+ADVANCE PLAYWRIGHT FRAMEWORK: HOW THE FLOW MOVES BETWEEN FILES
+=============================================================
+
+This guide follows a test from the command that starts it, through the
+framework files it uses, to the report produced at the end. The main example
+is the TTACart checkout journey.
+
+
+1. STARTING THE TEST RUN
+------------------------
+
+Command:
+    npx playwright test
+
+Playwright reads playwright.config.ts first. That file:
+  - Looks for a .env file.
+  - Chooses the base URL. BASE_URL takes priority; otherwise TTA_ENV chooses
+    the relevant environment URL, with QA as the default.
+  - Finds test files under src/tests.
+  - Selects the configured Chromium project and browser settings.
+  - Enables screenshots, video, and traces.
+  - Registers the line, Playwright HTML, and custom TTA reporters.
+  - Sets parallelism and retry behavior (CI uses one worker and retries).
+
+The base URL is combined with the relative page paths in the page objects.
+This lets a test use the same paths against different configured environments.
+
+
+2. PLAYWRIGHT FINDS AND STARTS A TEST
+-------------------------------------
+
+Playwright discovers files ending in .spec.ts under src/tests, for example:
+
+    src/tests/login.spec.ts
+    src/tests/e2e/e2e-checkout.spec.ts
+
+Each test receives Playwright fixtures such as page. Playwright creates the
+browser context and page for the test and manages their lifetime.
+
+There are two styles in this repository:
+
+  A. Direct Playwright style
+     login.spec.ts imports test from @playwright/test. It creates a LoginPage
+     itself with new LoginPage(page), then calls the page object's methods.
+
+  B. Custom fixture style
+     The checkout specs import test from @fixtures/test-base. That custom test
+     extends Playwright's test with ready-to-use page objects and reusable
+     application states.
+
+
+3. THE CUSTOM FIXTURE FILE WIRES UP PAGE OBJECTS
+------------------------------------------------
+
+src/fixtures/test-base.ts is the connection point between Playwright's page
+fixture and this framework's page objects.
+
+For example:
+
+    Playwright page
+        -> new LoginPage(page)
+        -> new InventoryPage(page)
+        -> new CartPage(page)
+        -> checkout page objects
+
+The test asks for the fixtures it needs in its callback parameters. Playwright
+sets those up for that test and passes them in. A page-object fixture creates
+the object; by itself, it does not necessarily navigate to the corresponding
+screen or log in.
+
+The same file also defines state fixtures:
+  - invalidLogin opens the login page, submits the locked-out test account,
+    and checks that the error is visible.
+  - validLogin opens the login page and signs in as the configured standard
+    test account.
+  - loginWithInventory depends on validLogin and checks that inventory loaded.
+  - loginWithSelectedItem depends on loginWithInventory and adds an item.
+
+These are lazy: a state fixture runs when a test requests it. Fixture
+dependencies determine setup order; the order of properties in a test
+callback is not the mechanism that performs the setup.
+
+
+4. CREDENTIALS AND TEST DATA
+----------------------------
+
+The explicit-login checkout example uses:
+
+    src/config/credentials.ts
+        -> src/config/env.ts
+        -> process environment / .env values, with defaults where configured
+
+The fixture file also reads src/testdata/logintestdata.json to find the test
+accounts used by its login-state fixtures.
+
+Checkout customer details come from src/utils/DataGenerator.ts. Its
+checkoutCustomer() method uses Faker to create a first name, last name, and
+postal code. The spec passes that object to
+CheckoutStepOnePage.fillGuest(customer), which fills the form fields. The
+generator also provides reusable methods for credentials, contact details,
+numbers, booleans, dates, and complete profiles. Its checkoutCustomerFromEnv()
+method uses configured CHECKOUT_* values where available and generated values
+for fields that are not configured.
+
+
+5. THE CHECKOUT TEST TELLS THE USER JOURNEY
+-------------------------------------------
+
+In src/tests/e2e/e2e-checkout.spec.ts, the test uses custom fixtures for the
+page objects. Its beforeEach hook performs the login:
+
+    credentials
+        -> LoginPage.open()
+        -> LoginPage.loginAs(username, password)
+
+Then the test body continues through the journey:
+
+    InventoryPage.open()
+        -> InventoryPage.addToCart(itemId)
+    CartPage.open()
+        -> CartPage.rowCount() is checked
+        -> CartPage.checkout()
+    CheckoutStepOnePage.assertLoaded()
+        -> CheckoutStepOnePage.fillGuest(customer)
+        -> CheckoutStepOnePage.continue()
+    CheckoutStepTwoPage.assertLoaded()
+        -> CheckoutStepTwoPage.finish()
+    CheckoutCompletePage.assertOrderComplete()
+
+The spec describes what the user does and what the test expects. It should not
+need to know the CSS selector for every button or input; those details belong
+to the relevant page object.
+
+
+6. PAGE OBJECTS DO THE SCREEN-SPECIFIC WORK
+-------------------------------------------
+
+Each screen has a file in src/pages. For example, LoginPage owns the username,
+password, login button, and error-message locators. Its loginAs() method fills
+the fields, clicks the button, and waits for either successful navigation or
+an error. InventoryPage owns product and cart locators; CheckoutStepOnePage
+owns the guest form; and so on.
+
+All of these page objects extend src/pages/BasePage.ts. BasePage gives them:
+  - page: the Playwright Page for the current test.
+  - el: the common action helper.
+  - log: a logger scoped to that page object.
+  - goto(): navigation using a path relative to the configured base URL.
+
+The action path is:
+
+    Spec
+      -> intent-level method on a page object
+      -> UtilElementLocator (for common click/fill/read actions)
+      -> Playwright Locator API
+      -> browser interaction
+
+For example:
+
+    test calls inventoryPage.addToCart(id)
+      -> InventoryPage builds the add-to-cart locator for that id
+      -> UtilElementLocator.click(locator)
+      -> Playwright clicks the element in the browser
+
+Page objects also use Playwright expect assertions to confirm that pages and
+important elements are in the expected state.
+
+
+7. LOGGING, SCREENSHOTS, AND REPORTING
+--------------------------------------
+
+Page objects and utility actions use src/utils/logger.ts. The scoped logger
+helps identify which page or helper produced a message. The configured
+Playwright run also captures screenshots, video, and trace artifacts.
+
+At the same time, src/utils/CustomReporter.ts receives test-run events:
+  - onBegin initializes a run-specific report.
+  - onTestBegin/onTestEnd collect test details, steps, status, and attachments.
+  - onEnd writes the HTML report and updates the latest-report/history pages.
+
+The reporter is configured in playwright.config.ts. It is separate from the
+test's page-object flow: it observes and summarizes the run rather than
+performing the checkout actions.
+
+For specs that use src/utils/visualSteps.ts, visualStep() wraps a step in
+Playwright's test.step(). If ATTACH_SCREENSHOTS=true, it also attaches a
+screenshot for that step; the custom reporter associates named step
+attachments with the report.
+
+The additional reporter helpers under src/ai/ support report analysis such as
+failure-cause hints and flaky-test summaries; they do not replace the test,
+fixture, or page-object layers.
+
+
+8. SHORT VERSION OF THE FILE-TO-FILE FLOW
+-----------------------------------------
+
+Run command
+  -> playwright.config.ts
+  -> src/tests/**/*.spec.ts
+  -> src/fixtures/test-base.ts (for specs importing its custom test)
+  -> src/config/credentials.ts / src/testdata/logintestdata.json
+  -> src/pages/<screen>Page.ts
+  -> src/pages/BasePage.ts
+  -> src/utils/UtilElementLocator.ts
+  -> Playwright Locator API and browser
+  -> assertions in the spec and page objects
+  -> src/utils/CustomReporter.ts
+  -> HTML report and Playwright artifacts
+
+
+CURRENT SOURCE NOTE
+-------------------
+
+The generator is src/utils/DataGenerator.ts (singular), matching the
+@utils/DataGenerator imports in the checkout specs. The repository also
+contains src/utils/visualSteps.ts, matching the @utils/visualSteps imports in
+the visual-step specs.
