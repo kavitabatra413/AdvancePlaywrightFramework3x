@@ -1,0 +1,13 @@
+2026-11-06 13:19:22 [info] Payload is set: {"firstname":"Jim","lastname":"Brown","totalprice":111,"depositpaid":true,"bookingdates":{"checkin":"2018-01-01","checkout":"2019-01-01"},"additionalneeds":"Breakfast"}
+2026-11-06 13:19:22 [info] Header is set: {"Accept":"application/json","Content-Type":"application/json"}
+2026-11-06 13:26:10 [info] Payload is set: {"firstname":"Jim","lastname":"Brown","totalprice":111,"depositpaid":true,"bookingdates":{"checkin":"2018-01-01","checkout":"2019-01-01"},"additionalneeds":"Breakfast"}
+2026-11-06 13:26:10 [info] Header is set: {"Accept":"application/json","Content-Type":"application/json"}
+2026-11-06 13:31:54 [info] Payload is set: {"firstname":"Jim","lastname":"Brown","totalprice":111,"depositpaid":true,"bookingdates":{"checkin":"2018-01-01","checkout":"2019-01-01"},"additionalneeds":"Breakfast"}
+2026-11-06 13:31:54 [info] Header is set: {"Accept":"application/json","Content-Type":"application/json"}
+2026-11-06 13:32:55 [info] Payload is set: {"firstname":"Jim","lastname":"Brown","totalprice":111,"depositpaid":true,"bookingdates":{"checkin":"2018-01-01","checkout":"2019-01-01"},"additionalneeds":"Breakfast"}
+2026-11-06 13:32:55 [info] Header is set: {"Accept":"application/json","Content-Type":"application/json"}
+2026-11-06 13:32:56 [info] Response is set: {"bookingid":875,"booking":{"firstname":"Jim","lastname":"Brown","totalprice":111,"depositpaid":true,"bookingdates":{"checkin":"2018-01-01","checkout":"2019-01-01"},"additionalneeds":"Breakfast"}}
+2026-11-06 13:32:56 [info] Created booking id: 875
+2026-11-06 14:54:22 [info] Created auth token for PUT booking flow
+2026-11-06 14:54:22 [info] Created booking id for update: 1793
+2026-11-06 14:54:23 [info] Updated booking id 1793: Pramod Dutta
