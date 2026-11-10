@@ -8,7 +8,7 @@ import { request } from 'node:http';
 // HTTP GET -> https://restful-booker.herokuapp.com/ping
 
 test('ping request - GET', async({ request})=>{
-        const responseData = await request.get("/ping");
+        const responseData = await request.get("https://restful-booker.herokuapp.com/ping");
         console.log(responseData);
         expect(responseData.status()).toBe(201);
 });
